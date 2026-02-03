@@ -41,16 +41,8 @@ func (s *MockService) Previsit(event mockgcpregistry.Event, replacements mockgcp
 	}
 	if ok := event.ParseResponseInto(&sqlInstance); ok {
 		for _, ipAddress := range sqlInstance.IPAddresses {
-			switch ipAddress.Type {
-			case "PRIVATE":
+			if ipAddress.Type == "PRIVATE" {
 				replacements.ReplaceStringValue(ipAddress.IPAddress, "10.1.2.3")
-			case "PRIMARY":
-				replacements.ReplaceStringValue(ipAddress.IPAddress, "10.10.10.10")
-			case "OUTGOING":
-				replacements.ReplaceStringValue(ipAddress.IPAddress, "10.10.10.11")
-			}
-			if ipAddress.Type == "PRIMARY" {
-				replacements.ReplaceStringValue(ipAddress.IPAddress, "10.10.10.10")
 			}
 		}
 	}

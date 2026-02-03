@@ -74,10 +74,6 @@ clusterRef:
   external: string
   name: string
   namespace: string
-connectionPoolConfig:
-  enabled: boolean
-  flags:
-    string: string
 databaseFlags:
   string: string
 displayName: string
@@ -185,36 +181,6 @@ Possible values: ["AVAILABILITY_TYPE_UNSPECIFIED", "ZONAL", "REGIONAL"].{% endve
         <td>
             <p><code class="apitype">string</code></p>
             <p>{% verbatim %}The `metadata.namespace` field of a `AlloyDBCluster` resource.{% endverbatim %}</p>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <p><code>connectionPoolConfig</code></p>
-            <p><i>Optional</i></p>
-        </td>
-        <td>
-            <p><code class="apitype">object</code></p>
-            <p>{% verbatim %}Configuration for Managed Connection Pool (MCP).{% endverbatim %}</p>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <p><code>connectionPoolConfig.enabled</code></p>
-            <p><i>Optional</i></p>
-        </td>
-        <td>
-            <p><code class="apitype">boolean</code></p>
-            <p>{% verbatim %}Optional. Whether to enable Managed Connection Pool (MCP).{% endverbatim %}</p>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <p><code>connectionPoolConfig.flags</code></p>
-            <p><i>Optional</i></p>
-        </td>
-        <td>
-            <p><code class="apitype">map (key: string, value: string)</code></p>
-            <p>{% verbatim %}Optional. Connection Pool flags, as a list of "key": "value" pairs.{% endverbatim %}</p>
         </td>
     </tr>
     <tr>
@@ -601,8 +567,6 @@ ipAddress: string
 name: string
 observedGeneration: integer
 observedState:
-  connectionPoolConfig:
-    poolerCount: integer
   observabilityConfig:
     trackWaitEventTypes: boolean
 outboundPublicIpAddresses:
@@ -710,20 +674,6 @@ updateTime: string
         <td>
             <p><code class="apitype">object</code></p>
             <p>{% verbatim %}ObservedState is the state of the resource as most recently observed in GCP.{% endverbatim %}</p>
-        </td>
-    </tr>
-    <tr>
-        <td><code>observedState.connectionPoolConfig</code></td>
-        <td>
-            <p><code class="apitype">object</code></p>
-            <p>{% verbatim %}Output for Managed Connection Pool (MCP).{% endverbatim %}</p>
-        </td>
-    </tr>
-    <tr>
-        <td><code>observedState.connectionPoolConfig.poolerCount</code></td>
-        <td>
-            <p><code class="apitype">integer</code></p>
-            <p>{% verbatim %}Output only. The number of running poolers per instance.{% endverbatim %}</p>
         </td>
     </tr>
     <tr>
