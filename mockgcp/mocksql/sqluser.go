@@ -101,8 +101,16 @@ func (s *sqlUsersService) Insert(ctx context.Context, req *pb.SqlUsersInsertRequ
 	obj.Project = name.Project.ID
 	obj.Instance = name.Instance
 	obj.Kind = "sql#user"
-
-	populateUserDefaults(obj)
+	if obj.PasswordPolicy == nil {
+		obj.PasswordPolicy = &pb.UserPasswordValidationPolicy{Status: &pb.PasswordStatus{}}
+	} else {
+		if obj.PasswordPolicy.PasswordExpirationDuration != nil {
+			if obj.PasswordPolicy.Status == nil {
+				obj.PasswordPolicy.Status = &pb.PasswordStatus{}
+			}
+			obj.PasswordPolicy.Status.PasswordExpirationTime = timestamppb.New(time.Now().Add(obj.PasswordPolicy.PasswordExpirationDuration.AsDuration()))
+		}
+	}
 
 	obj.Etag = fields.ComputeWeakEtag(obj)
 
@@ -135,7 +143,6 @@ func (s *sqlUsersService) Update(ctx context.Context, req *pb.SqlUsersUpdateRequ
 	}
 
 	obj = proto.Clone(req.GetBody()).(*pb.User)
-	populateUserDefaults(obj)
 	obj.Etag = fields.ComputeWeakEtag(obj)
 
 	if err := s.storage.Update(ctx, fqn, obj); err != nil {
@@ -209,23 +216,4 @@ func (s *MockService) buildUserName(projectID, instanceName, userName string) (*
 		Instance: instanceName,
 		UserName: userName,
 	}, nil
-}
-
-func populateUserDefaults(obj *pb.User) {
-	if obj.PasswordPolicy == nil {
-		obj.PasswordPolicy = &pb.UserPasswordValidationPolicy{Status: &pb.PasswordStatus{}}
-	} else {
-		if obj.PasswordPolicy.PasswordExpirationDuration != nil {
-			if obj.PasswordPolicy.Status == nil {
-				obj.PasswordPolicy.Status = &pb.PasswordStatus{}
-			}
-			if obj.PasswordPolicy.Status.PasswordExpirationTime == nil {
-				obj.PasswordPolicy.Status.PasswordExpirationTime = timestamppb.New(time.Now().Add(obj.PasswordPolicy.PasswordExpirationDuration.AsDuration()))
-			}
-		}
-	}
-
-	if obj.IamStatus == nil {
-		obj.IamStatus = PtrTo("IAM_STATUS_UNSPECIFIED")
-	}
 }

@@ -32,3 +32,10 @@ spec:
   dryRunSpec:
     inheritFromParent: false
     reset: true
+    rules:
+      - condition:
+          expression: "resource.matchTag('123456789/environment', 'staging')"
+          title: "staging-env"
+          description: "Staging environment"
+          location: "us-west1"
+        enforce: false

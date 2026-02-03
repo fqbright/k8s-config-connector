@@ -791,8 +791,6 @@ type ReplicaConfiguration struct {
 	CascadableReplica *bool `json:"cascadableReplica,omitempty"`
 }
 
-/* found existing non-generated go type "ReplicationCluster", skipping
-
 // +kcc:proto=google.cloud.sql.v1beta4.ReplicationCluster
 type ReplicationCluster struct {
 
@@ -805,7 +803,6 @@ type ReplicationCluster struct {
 	// +kcc:proto:field=google.cloud.sql.v1beta4.ReplicationCluster.failover_dr_replica_name
 	FailoverDrReplicaName *string `json:"failoverDrReplicaName,omitempty"`
 }
-*/
 
 // +kcc:proto=google.cloud.sql.v1beta4.Settings
 type Settings struct {
