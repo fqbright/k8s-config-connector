@@ -52,8 +52,6 @@ type Recorder struct {
 	ReconciledResources map[GKNN]bool
 	// Number of resources has not been reconciled.
 	RemainResourcesCount int
-	// Summary of the preview.
-	Summary *PreviewSummary
 }
 
 // NewRecorder creates a new Recorder.
@@ -178,7 +176,7 @@ func (r *Recorder) recordDiff(ctx context.Context, diff *structuredreporting.Dif
 		return
 	}
 
-	log.V(1).Info("recordDiffs", "gknn", gknn)
+	log.Info("recordDiffs", "gknn", gknn)
 
 	info := r.getObjectInfo(gknn)
 	info.events = append(info.events, event{
@@ -239,7 +237,7 @@ func gknnFromUnstructured(u *unstructured.Unstructured) GKNN {
 
 // recordKubeAction captures the kube action into our recorder.
 func (r *Recorder) recordKubeAction(ctx context.Context, method string, args []any, action Action) {
-	klog.V(1).Infof("recordKubeAction %v %v %v", method, args, action)
+	klog.Infof("recordKubeAction %v %v %v", method, args, action)
 	var gknn GKNN
 
 	kubeAction := &kubeAction{
@@ -342,8 +340,7 @@ func (r *Recorder) DoneReconciling() bool {
 
 // TODO: Implement concurrent worker by GVRs.
 func (r *Recorder) PreloadGKNN(ctx context.Context, config *rest.Config, namespace string) error {
-	log := klog.FromContext(ctx)
-	log.V(0).Info("Preloading the list of resources to reconcile")
+	klog.Infof("Preloading the list of resources to reconcile")
 	// Make a copy of config to increase QPS and burst.
 	// This would not effect the config for the Manager.
 	config = rest.CopyConfig(config)
@@ -373,7 +370,7 @@ func (r *Recorder) PreloadGKNN(ctx context.Context, config *rest.Config, namespa
 
 		apiResourceListGroupVersion, err := schema.ParseGroupVersion(apiResourceList.GroupVersion)
 		if err != nil {
-			log.V(1).Info("skipping unparseable groupVersion", apiResourceList.GroupVersion)
+			klog.Warningf("skipping unparseable groupVersion %q", apiResourceList.GroupVersion)
 			continue
 		}
 		for _, apiResource := range apiResourceList.APIResources {
@@ -395,7 +392,7 @@ func (r *Recorder) PreloadGKNN(ctx context.Context, config *rest.Config, namespa
 				gvr.Version = apiResourceListGroupVersion.Version
 			}
 			// Not tracking CC and CCC objects.
-			if strings.HasSuffix(gvr.Group, "core.cnrm.cloud.google.com") {
+			if gvr.Group == "core.cnrm.cloud.google.com" {
 				continue
 			}
 			var resources *unstructured.UnstructuredList
@@ -421,15 +418,8 @@ func (r *Recorder) PreloadGKNN(ctx context.Context, config *rest.Config, namespa
 			r.RemainResourcesCount += len(resources.Items)
 		}
 	}
-	log.V(0).Info("Successfully preloaded the list of resources to reconcile", "count", r.RemainResourcesCount)
+	klog.Infof("Got %d objects to reconcile", r.RemainResourcesCount)
 	return nil
-}
-
-func (r *Recorder) getOrCreateSummary() *PreviewSummary {
-	if r.Summary == nil {
-		r.Summary = r.newPreviewSummary()
-	}
-	return r.Summary
 }
 
 // contains checks if a slice contains a specific string.

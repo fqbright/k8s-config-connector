@@ -1,4 +1,4 @@
-# Copyright 2026 Google LLC
+# Copyright 2024 Google LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,25 +15,17 @@
 apiVersion: dataform.cnrm.cloud.google.com/v1beta1
 kind: DataformRepository
 metadata:
-  name: df-full-${uniqueId}
-  annotations:
-    cnrm.cloud.google.com/project-id: ${projectId}
+  name: dataformrepository-${uniqueId}
 spec:
   projectRef:
     external: ${projectId}
   region: us-west2
-  displayName: "Updated Display Name"
   gitRemoteSettings:
-    url: "https://github.com/GoogleCloudPlatform/k8s-config-connector.git"
-    defaultBranch: "master"
+    defaultBranch: main
+    url: https://github.com/GoogleCloudPlatform/k8s-config-connector
     authenticationTokenSecretVersionRef:
-      name: df-secret-v2-${uniqueId}
+      external: projects/${projectNumber}/secrets/secretmanagersecret-${uniqueId}/versions/1
   workspaceCompilationOverrides:
-    defaultDatabase: "db2"
-    schemaSuffix: "s2"
-    tablePrefix: "p2"
-  setAuthenticatedUserAdmin: true
-  serviceAccountRef:
-    name: df-sa2-${uniqueId}
-  npmrcEnvironmentVariablesSecretVersionRef:
-    name: df-secret-v2-${uniqueId}
+    defaultDatabase: "database"
+    schemaSuffix: "_suffix"
+    tablePrefix: "prefix_"
