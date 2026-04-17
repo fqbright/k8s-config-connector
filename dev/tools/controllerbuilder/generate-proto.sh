@@ -38,7 +38,7 @@ mkdir -p ${THIRD_PARTY}/
 cd ${THIRD_PARTY}
 
 if [ ! -d "googleapis" ]; then
-    git clone https://github.com/googleapis/googleapis.git
+    git clone --depth 1 https://github.com/googleapis/googleapis.git
 fi
 
 if [ "${GOOGLEAPI_VERSION}" == "HEAD" ]; then
@@ -104,6 +104,7 @@ protoc --include_imports --include_source_info \
     ${THIRD_PARTY}/googleapis/google/firestore/*/*.proto \
     ${THIRD_PARTY}/googleapis/google/firestore/*/*/*.proto \
     ${THIRD_PARTY}/googleapis/google/iam/v1/*.proto \
+    ${THIRD_PARTY}/googleapis/google/iam/admin/v1/*.proto \
     ${THIRD_PARTY}/googleapis/google/logging/v2/*.proto \
     ${THIRD_PARTY}/googleapis/google/monitoring/v3/*.proto \
     ${THIRD_PARTY}/googleapis/google/monitoring/dashboard/v1/*.proto \

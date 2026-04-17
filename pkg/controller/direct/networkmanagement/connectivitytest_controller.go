@@ -41,6 +41,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/common"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/directbase"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/registry"
+	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/structuredreporting"
 )
 
 func init() {
@@ -57,7 +58,9 @@ type connectivityTestModel struct {
 	config *config.ControllerConfig
 }
 
-func (m *connectivityTestModel) AdapterForObject(ctx context.Context, reader client.Reader, u *unstructured.Unstructured) (directbase.Adapter, error) {
+func (m *connectivityTestModel) AdapterForObject(ctx context.Context, op *directbase.AdapterForObjectOperation) (directbase.Adapter, error) {
+	u := op.GetUnstructured()
+	reader := op.Reader
 	obj := &krm.NetworkManagementConnectivityTest{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &obj); err != nil {
 		return nil, fmt.Errorf("error converting to %T: %w", obj, err)
@@ -193,6 +196,12 @@ func (a *connectivityTestAdapter) Update(ctx context.Context, updateOp *directba
 		// Still update the status to cover the use case of acquisition.
 		updated = a.actual
 	} else {
+		report := &structuredreporting.Diff{Object: updateOp.GetUnstructured()}
+		for path := range paths {
+			report.AddField(path, nil, nil)
+		}
+		structuredreporting.ReportDiff(ctx, report)
+
 		updateMask := &fieldmaskpb.FieldMask{Paths: sets.List(topLevelFieldPaths)}
 		log.V(2).Info("updating fields", "name", a.id, "paths", updateMask.Paths)
 

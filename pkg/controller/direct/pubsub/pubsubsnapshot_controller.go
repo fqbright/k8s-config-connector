@@ -36,14 +36,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
 
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	krm "github.com/GoogleCloudPlatform/k8s-config-connector/apis/pubsub/v1beta1"
 	refsv1beta1 "github.com/GoogleCloudPlatform/k8s-config-connector/apis/refs/v1beta1"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/config"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/directbase"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/registry"
+	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/structuredreporting"
 )
 
 func init() {
@@ -84,7 +83,9 @@ func (m *SnapshotModel) client(ctx context.Context, projectID string) (*api.Subs
 	return gcpClient, err
 }
 
-func (m *SnapshotModel) AdapterForObject(ctx context.Context, reader client.Reader, u *unstructured.Unstructured) (directbase.Adapter, error) {
+func (m *SnapshotModel) AdapterForObject(ctx context.Context, op *directbase.AdapterForObjectOperation) (directbase.Adapter, error) {
+	u := op.GetUnstructured()
+	reader := op.Reader
 	obj := &krm.PubSubSnapshot{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &obj); err != nil {
 		return nil, fmt.Errorf("error converting to %T: %w", obj, err)
@@ -181,10 +182,13 @@ func (a *snapshotAdapter) Update(ctx context.Context, updateOp *directbase.Updat
 	log := klog.FromContext(ctx)
 	log.V(2).Info("updating pubsub snapshot", "name", a.id)
 
+	report := &structuredreporting.Diff{Object: updateOp.GetUnstructured()}
+
 	updateMask := &fieldmaskpb.FieldMask{}
 	updated := proto.Clone(a.actual).(*pb.Snapshot)
 
 	if !reflect.DeepEqual(a.actual.Labels, a.desired.Spec.Labels) {
+		report.AddField("labels", a.actual.Labels, a.desired.Spec.Labels)
 		updated.Labels = a.desired.Spec.Labels
 		updateMask.Paths = append(updateMask.Paths, "labels")
 	}
@@ -195,6 +199,8 @@ func (a *snapshotAdapter) Update(ctx context.Context, updateOp *directbase.Updat
 		status.ExternalRef = direct.LazyPtr(a.actual.Name)
 		return updateOp.UpdateStatus(ctx, status, nil)
 	}
+
+	structuredreporting.ReportDiff(ctx, report)
 
 	req := &pb.UpdateSnapshotRequest{
 		Snapshot:   updated,

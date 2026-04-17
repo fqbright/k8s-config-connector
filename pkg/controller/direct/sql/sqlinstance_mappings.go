@@ -41,11 +41,10 @@ func SQLInstanceKRMToGCP(in *krm.SQLInstance, actual *api.DatabaseInstance, fiel
 	out := &api.DatabaseInstance{
 		DatabaseVersion:             direct.ValueOf(in.Spec.DatabaseVersion),
 		DiskEncryptionConfiguration: InstanceEncryptionKMSCryptoKeyRefKRMToGCP(in.Spec.EncryptionKMSCryptoKeyRef),
-		// GeminiConfig is not supported in KRM API.
-		InstanceType:       direct.ValueOf(in.Spec.InstanceType),
-		Kind:               "sql#instance",
-		MaintenanceVersion: direct.ValueOf(in.Spec.MaintenanceVersion),
-		MasterInstanceName: InstanceMasterInstanceRefKRMToGCP(in.Spec.MasterInstanceRef),
+		InstanceType:                direct.ValueOf(in.Spec.InstanceType),
+		Kind:                        "sql#instance",
+		MaintenanceVersion:          direct.ValueOf(in.Spec.MaintenanceVersion),
+		MasterInstanceName:          InstanceMasterInstanceRefKRMToGCP(in.Spec.MasterInstanceRef),
 		// MaxDiskSize is not supported in KRM API.
 		Name: direct.ValueOf(in.Spec.ResourceID),
 		// OnPremisesConfiguration is not supported in KRM API.
@@ -422,9 +421,10 @@ func InstanceIpConfigurationKRMToGCP(in *krm.InstanceIpConfiguration) *api.IpCon
 		SslMode:                                 direct.ValueOf(in.SslMode),
 	}
 
-	if in.EnablePrivatePathForGoogleCloudServices != nil {
-		out.ForceSendFields = append(out.ForceSendFields, "EnablePrivatePathForGoogleCloudServices")
-	}
+	// We should always send fields in an update, so we add ForceSendFields for all optional fields.
+	// TODO: Roll this out more widely once we confirm it works well for IpConfiguration.
+	out.ForceSendFields = append(out.ForceSendFields, "EnablePrivatePathForGoogleCloudServices")
+
 	if in.Ipv4Enabled != nil {
 		out.ForceSendFields = append(out.ForceSendFields, "Ipv4Enabled")
 	}
@@ -652,10 +652,9 @@ func SQLInstanceGCPToKRM(in *api.DatabaseInstance) (*krm.SQLInstance, error) {
 		Spec: krm.SQLInstanceSpec{
 			DatabaseVersion:           direct.LazyPtr(in.DatabaseVersion),
 			EncryptionKMSCryptoKeyRef: InstanceEncryptionKMSCryptoKeyRefGCPToKRM(in.DiskEncryptionConfiguration),
-			// GeminiConfig is not supported in KRM API.
-			InstanceType:       direct.LazyPtr(in.InstanceType),
-			MaintenanceVersion: direct.LazyPtr(in.MaintenanceVersion),
-			MasterInstanceRef:  InstanceMasterInstanceRefGCPToKRM(in.MasterInstanceName),
+			InstanceType:              direct.LazyPtr(in.InstanceType),
+			MaintenanceVersion:        direct.LazyPtr(in.MaintenanceVersion),
+			MasterInstanceRef:         InstanceMasterInstanceRefGCPToKRM(in.MasterInstanceName),
 			// MaxDiskSize is not supported in KRM API.
 			ResourceID: direct.LazyPtr(in.Name),
 			// OnPremisesConfiguration is not supported in KRM API.

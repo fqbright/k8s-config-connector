@@ -99,9 +99,10 @@ func NewReconciler(mgr manager.Manager, immediateReconcileRequests chan event.Ge
 		ReconcilerMetrics: metrics.ReconcilerMetrics{
 			ResourceNameLabel: metrics.ResourceNameLabel,
 		},
-		jitterGenerator: deps.JitterGenerator,
-		defaulters:      deps.Defaulters,
-		iamDeps:         deps.IAMAdapterDeps,
+		jitterGenerator:    deps.JitterGenerator,
+		defaulters:         deps.Defaulters,
+		iamDeps:            deps.IAMAdapterDeps,
+		SkipNameValidation: deps.SkipNameValidation,
 	}
 	return &r, nil
 }
@@ -116,7 +117,7 @@ func add(mgr manager.Manager, r *DirectReconciler) error {
 	controllerBuilder := builder.
 		ControllerManagedBy(mgr).
 		Named(r.controllerName).
-		WithOptions(crcontroller.Options{MaxConcurrentReconciles: k8s.ControllerMaxConcurrentReconciles, SkipNameValidation: ptr.To(true), RateLimiter: ratelimiter.NewRateLimiter()}).
+		WithOptions(crcontroller.Options{MaxConcurrentReconciles: k8s.ControllerMaxConcurrentReconciles, SkipNameValidation: ptr.To(r.SkipNameValidation), RateLimiter: ratelimiter.NewRateLimiter()}).
 		WatchesRawSource(
 			source.TypedChannel(r.immediateReconcileRequests, &handler.EnqueueRequestForObject{})).
 		For(obj, builder.OnlyMetadata, builder.WithPredicates(predicateList...))
@@ -161,6 +162,8 @@ type Deps struct {
 
 	// There are Dependencies for Adapters in particular (not the reconcilers)
 	IAMAdapterDeps *IAMAdapterDeps
+
+	SkipNameValidation bool
 }
 
 // TODO(kcc-team): we want to remove these in the future
@@ -193,6 +196,8 @@ type DirectReconciler struct {
 
 	// reconcilePredicate is the predicate which determines if we should be reconciling this object
 	reconcilePredicate predicate.Predicate
+
+	SkipNameValidation bool
 }
 
 type reconcileContext struct {
@@ -332,7 +337,11 @@ func (r *reconcileContext) doReconcile(ctx context.Context, u *unstructured.Unst
 		adapter, adapteErr = m.IAMAdapterForObject(ctx, r.Reconciler.Client, u, r.Reconciler.iamDeps)
 	default:
 		// The default case handles any other type that implements the base model interface.
-		adapter, adapteErr = r.Reconciler.model.AdapterForObject(ctx, r.Reconciler.Client, u)
+		op := &AdapterForObjectOperation{
+			Reader: r.Reconciler.Client,
+			Object: u,
+		}
+		adapter, adapteErr = r.Reconciler.model.AdapterForObject(ctx, op)
 	}
 	if adapteErr != nil {
 		if unwrappedErr, ok := lifecyclehandler.CausedByUnresolvableDeps(adapteErr); ok {

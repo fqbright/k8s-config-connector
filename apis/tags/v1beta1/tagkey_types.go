@@ -29,7 +29,7 @@ type TagsTagKeySpec struct {
 	// // Required. Defines the parent path of the resource.
 	// *parent.ProjectAndLocationRef `json:",inline"`
 
-	// The TagsTagKey name. If not given, the metadata.name will be used.
+	// Immutable. Optional. The service-generated name of the resource. Used for acquisition only. Leave unset to create a new resource.
 	ResourceID *string `json:"resourceID,omitempty"`
 
 	// Immutable. The resource name of the TagKey's parent. A TagKey can be
@@ -120,7 +120,7 @@ type TagsTagKeyObservedState struct {
 // +kubebuilder:resource:categories=gcp,shortName=gcptagstagkey;gcptagstagkeys
 // +kubebuilder:subresource:status
 // +kubebuilder:metadata:labels="cnrm.cloud.google.com/managed-by-kcc=true"
-// +kubebuilder:metadata:labels="cnrm.cloud.google.com/stability-level=alpha"
+// +kubebuilder:metadata:labels="cnrm.cloud.google.com/stability-level=stable"
 // +kubebuilder:metadata:labels="cnrm.cloud.google.com/system=true"
 // +kubebuilder:metadata:labels="cnrm.cloud.google.com/tf2crd=true"
 // +kubebuilder:printcolumn:name="Age",JSONPath=".metadata.creationTimestamp",type="date"

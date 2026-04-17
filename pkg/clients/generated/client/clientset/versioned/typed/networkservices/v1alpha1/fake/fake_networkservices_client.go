@@ -43,6 +43,14 @@ func (c *FakeNetworkservicesV1alpha1) NetworkServicesEdgeCacheServices(namespace
 	return &FakeNetworkServicesEdgeCacheServices{c, namespace}
 }
 
+func (c *FakeNetworkservicesV1alpha1) NetworkServicesLBRouteExtensions(namespace string) v1alpha1.NetworkServicesLBRouteExtensionInterface {
+	return &FakeNetworkServicesLBRouteExtensions{c, namespace}
+}
+
+func (c *FakeNetworkservicesV1alpha1) NetworkServicesServiceBindings(namespace string) v1alpha1.NetworkServicesServiceBindingInterface {
+	return &FakeNetworkServicesServiceBindings{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeNetworkservicesV1alpha1) RESTClient() rest.Interface {

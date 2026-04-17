@@ -16,6 +16,7 @@ REPO_ROOT := $(shell git rev-parse --show-toplevel)
 PROJECT_ID ?= $(shell gcloud config get-value project)
 SHORT_SHA := $(shell git rev-parse --short=7 HEAD)
 OPERATOR_IMG ?= gcr.io/${PROJECT_ID}/cnrm/operator:${SHORT_SHA}
+GKE_DISTROLESS_IMG ?= gcr.io/gke-release/gke-distroless/static:gke_distroless_20260207.00_p0
 
 KUSTOMIZE=go run sigs.k8s.io/kustomize/kustomize/v5@v5.3.0
 
@@ -42,11 +43,25 @@ test: generate fmt vet manifests
 manager: generate fmt vet
 	go build -o bin/manager cmd/manager/main.go
 
+VERSION := $(shell cat ${REPO_ROOT}/version/VERSION)
+CHANNEL_MANIFEST := ${REPO_ROOT}/operator/channels/packages/configconnector/${VERSION}/crds.yaml
+
+.PHONY: ensure-channels
+ensure-channels:
+	@if [ ! -f "${CHANNEL_MANIFEST}" ]; then \
+		echo "Channel manifest not found at ${CHANNEL_MANIFEST}. Generating..."; \
+		${REPO_ROOT}/dev/tasks/generate-channels; \
+	fi
+
 # Generate manifests e.g. CRD, RBAC etc.
 .PHONY: manifests
-manifests:
+manifests: ensure-channels
 	go run sigs.k8s.io/controller-tools/cmd/controller-gen@v0.16.5 $(CRD_OPTIONS) paths="./pkg/apis/..." output:crd:artifacts:config=config/crd/bases
-	go run scripts/generate-image-configmap/main.go
+	@if [ -f "${CHANNEL_MANIFEST}" ]; then \
+		go run scripts/generate-image-configmap/main.go; \
+	else \
+		echo "Skipping image configmap generation as channel manifest ${CHANNEL_MANIFEST} is missing"; \
+	fi
 
 # Run go fmt against code
 .PHONY: fmt
@@ -76,7 +91,7 @@ uninstall: manifests
 # Build the docker image
 .PHONY: docker-build
 docker-build:
-	docker build .. -f Dockerfile -t ${OPERATOR_IMG}
+	docker build .. -f Dockerfile -t ${OPERATOR_IMG} --build-arg GKE_DISTROLESS_IMG=${GKE_DISTROLESS_IMG}
 	@echo "updating kustomize image patch file for manager"
 	cp config/manager/manager_image_patch_template.yaml config/manager/manager_image_patch.yaml
 	sed -i'' -e 's@image: .*@image: '"${OPERATOR_IMG}"'@' config/manager/manager_image_patch.yaml

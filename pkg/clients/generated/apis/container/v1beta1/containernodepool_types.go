@@ -32,8 +32,11 @@ package v1beta1
 
 import (
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/clients/generated/apis/k8s/v1alpha1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var _ = apiextensionsv1.JSON{}
 
 type NodepoolAdditionalNodeNetworkConfigs struct {
 	/* Immutable. Name of the VPC where the additional interface belongs. */
@@ -60,8 +63,13 @@ type NodepoolAdditionalPodNetworkConfigs struct {
 }
 
 type NodepoolAdvancedMachineFeatures struct {
+	/* Immutable. Whether or not to enable nested virtualization (defaults to false). */
+	// +optional
+	EnableNestedVirtualization *bool `json:"enableNestedVirtualization,omitempty"`
+
 	/* Immutable. The number of threads per physical core. To disable simultaneous multithreading (SMT) set this to 1. If unset, the maximum number of threads supported per core by the underlying processor is assumed. */
-	ThreadsPerCore int64 `json:"threadsPerCore"`
+	// +optional
+	ThreadsPerCore *int64 `json:"threadsPerCore,omitempty"`
 }
 
 type NodepoolAutoscaling struct {
@@ -106,6 +114,10 @@ type NodepoolEphemeralStorageConfig struct {
 }
 
 type NodepoolEphemeralStorageLocalSsdConfig struct {
+	/* Immutable. Number of local SSDs to be utilized for GKE Data Cache. Uses NVMe interfaces. */
+	// +optional
+	DataCacheCount *int64 `json:"dataCacheCount,omitempty"`
+
 	/* Immutable. Number of local SSDs to use to back ephemeral storage. Uses NVMe interfaces. Each local SSD must be 375 or 3000 GB in size, and all local SSDs must share the same size. */
 	LocalSsdCount int64 `json:"localSsdCount"`
 }
@@ -233,6 +245,10 @@ type NodepoolNetworkConfig struct {
 	/* Immutable. The ID of the secondary range for pod IPs. If create_pod_range is true, this ID is used for the new range. If create_pod_range is false, uses an existing secondary range with this ID. */
 	// +optional
 	PodRange *string `json:"podRange,omitempty"`
+
+	/* Immutable. The subnetwork path for the node pool. Format: projects/{project}/regions/{region}/subnetworks/{subnetwork}. If not set, the provider/API will choose the subnetwork (e.g. based on IP utilization) and report it here. */
+	// +optional
+	SubnetworkRef *v1alpha1.ResourceRef `json:"subnetworkRef,omitempty"`
 }
 
 type NodepoolNodeAffinity struct {

@@ -29,6 +29,8 @@ if [[ -z "${IMAGE_TAG:-}" ]]; then
     IMAGE_TAG="${EXACT_TAG}"
     # If there is a github/ prefix (as there is in our internal mirror), remove it
     IMAGE_TAG=${IMAGE_TAG#github/}
+    # Remove the prefixed "v" if it exists
+    IMAGE_TAG=${IMAGE_TAG#v}
   else
     IMAGE_TAG=$(git rev-parse --short=7 HEAD)
   fi
@@ -43,6 +45,7 @@ export RECORDER_IMG=${IMAGE_PREFIX}recorder:${IMAGE_TAG}
 export WEBHOOK_IMG=${IMAGE_PREFIX}webhook:${IMAGE_TAG}
 export DELETION_DEFENDER_IMG=${IMAGE_PREFIX}deletiondefender:${IMAGE_TAG}
 export UNMANAGED_DETECTOR_IMG=${IMAGE_PREFIX}unmanageddetector:${IMAGE_TAG}
+export CONFIG_CONNECTOR_IMG=${IMAGE_PREFIX}config-connector-cli:${IMAGE_TAG}
 
 export OPERATOR_IMG=${IMAGE_PREFIX}operator:${IMAGE_TAG}
 

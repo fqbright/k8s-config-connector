@@ -33,11 +33,11 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/directbase"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/registry"
+	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/structuredreporting"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
@@ -54,7 +54,9 @@ type apiQuotaAdjusterSettingsModel struct {
 	config config.ControllerConfig
 }
 
-func (m *apiQuotaAdjusterSettingsModel) AdapterForObject(ctx context.Context, reader client.Reader, u *unstructured.Unstructured) (directbase.Adapter, error) {
+func (m *apiQuotaAdjusterSettingsModel) AdapterForObject(ctx context.Context, op *directbase.AdapterForObjectOperation) (directbase.Adapter, error) {
+	u := op.GetUnstructured()
+	reader := op.Reader
 	obj := &krm.APIQuotaAdjusterSettings{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &obj); err != nil {
 		return nil, fmt.Errorf("error converting to %T: %w", obj, err)
@@ -140,8 +142,11 @@ func (a *apiQuotaAdjusterSettingsAdapter) Update(ctx context.Context, updateOp *
 		return mapCtx.Err()
 	}
 
+	report := &structuredreporting.Diff{Object: updateOp.GetUnstructured()}
+
 	paths := []string{}
 	if desired.Spec.Enablement != nil && !reflect.DeepEqual(resource.Enablement, a.actual.Enablement) {
+		report.AddField("enablement", a.actual.Enablement, resource.Enablement)
 		paths = append(paths, "enablement")
 	}
 
@@ -152,6 +157,7 @@ func (a *apiQuotaAdjusterSettingsAdapter) Update(ctx context.Context, updateOp *
 		// for potential acquisition scenarios.
 		updated = a.actual
 	} else {
+		structuredreporting.ReportDiff(ctx, report)
 		resource.Name = a.id.String() // we need to set the name so that GCP API can identify the resource
 		// Set etag for optimistic concurrency control if provided
 		if a.desired.Status.ObservedState != nil && a.desired.Status.ObservedState.Etag != nil {

@@ -24,6 +24,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/directbase"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/registry"
+	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/structuredreporting"
 
 	gcp "cloud.google.com/go/documentai/apiv1"
 	pb "cloud.google.com/go/documentai/apiv1/documentaipb"
@@ -32,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
@@ -62,7 +62,9 @@ func (m *modelProcessor) client(ctx context.Context) (*gcp.DocumentProcessorClie
 	return gcpClient, err
 }
 
-func (m *modelProcessor) AdapterForObject(ctx context.Context, reader client.Reader, u *unstructured.Unstructured) (directbase.Adapter, error) {
+func (m *modelProcessor) AdapterForObject(ctx context.Context, op *directbase.AdapterForObjectOperation) (directbase.Adapter, error) {
+	u := op.GetUnstructured()
+	reader := op.Reader
 	obj := &krm.DocumentAIProcessor{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &obj); err != nil {
 		return nil, fmt.Errorf("error converting to %T: %w", obj, err)
@@ -185,6 +187,10 @@ func (a *ProcessorAdapter) Update(ctx context.Context, updateOp *directbase.Upda
 		}
 		return updateOp.UpdateStatus(ctx, status, nil)
 	}
+
+	report := &structuredreporting.Diff{Object: updateOp.GetUnstructured()}
+	report.AddField("default_processor_version", a.actual.DefaultProcessorVersion, desiredPb.DefaultProcessorVersion)
+	structuredreporting.ReportDiff(ctx, report)
 
 	req := &pb.SetDefaultProcessorVersionRequest{
 		Processor:               a.id.String(),

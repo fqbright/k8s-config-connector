@@ -38,7 +38,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
@@ -68,7 +67,9 @@ func (m *modelJob) client(ctx context.Context) (*gcp.JobsClient, error) {
 	return gcpClient, err
 }
 
-func (m *modelJob) AdapterForObject(ctx context.Context, reader client.Reader, u *unstructured.Unstructured) (directbase.Adapter, error) {
+func (m *modelJob) AdapterForObject(ctx context.Context, op *directbase.AdapterForObjectOperation) (directbase.Adapter, error) {
+	u := op.GetUnstructured()
+	reader := op.Reader
 	obj := &krm.RunJob{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &obj); err != nil {
 		return nil, fmt.Errorf("error converting to %T: %w", obj, err)
@@ -78,7 +79,6 @@ func (m *modelJob) AdapterForObject(ctx context.Context, reader client.Reader, u
 	if err != nil {
 		return nil, err
 	}
-	// TODO: this should not block DELETION.
 	if err := ResolveRunJobRefs(ctx, reader, obj); err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (a *JobAdapter) Create(ctx context.Context, createOp *directbase.CreateOper
 		return mapCtx.Err()
 	}
 	status.ExternalRef = direct.LazyPtr(a.id.String())
-	newCookie, err := common.NewCookie(a.desired, created)
+	newCookie, err := common.NewLegacyCookie(a.desired, created)
 	if err != nil {
 		return fmt.Errorf("composing cookie: %w", err)
 	}
@@ -201,7 +201,7 @@ func (a *JobAdapter) Update(ctx context.Context, updateOp *directbase.UpdateOper
 	log := klog.FromContext(ctx)
 	log.V(2).Info("updating Job", "name", a.id)
 
-	currentCookie, err := common.NewCookie(a.desired, a.actual)
+	currentCookie, err := common.NewLegacyCookie(a.desired, a.actual)
 	if err != nil {
 		return err
 	}
@@ -237,7 +237,7 @@ func (a *JobAdapter) updateStatus(ctx context.Context, updated *pb.Job, updateOp
 	if mapCtx.Err() != nil {
 		return mapCtx.Err()
 	}
-	updatedCookie, err := common.NewCookie(a.desired, updated)
+	updatedCookie, err := common.NewLegacyCookie(a.desired, updated)
 	if err != nil {
 		return err
 	}

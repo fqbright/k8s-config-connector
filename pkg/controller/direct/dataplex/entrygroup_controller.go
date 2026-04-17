@@ -36,6 +36,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/directbase"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/registry"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/label"
+	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/structuredreporting"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -57,7 +58,9 @@ type entryGroupModel struct {
 	config *config.ControllerConfig
 }
 
-func (m *entryGroupModel) AdapterForObject(ctx context.Context, reader client.Reader, u *unstructured.Unstructured) (directbase.Adapter, error) {
+func (m *entryGroupModel) AdapterForObject(ctx context.Context, op *directbase.AdapterForObjectOperation) (directbase.Adapter, error) {
+	u := op.GetUnstructured()
+	reader := op.Reader
 	obj := &krm.DataplexEntryGroup{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &obj); err != nil {
 		return nil, fmt.Errorf("error converting to %T: %w", obj, err)
@@ -170,14 +173,19 @@ func (a *entryGroupAdapter) Update(ctx context.Context, updateOp *directbase.Upd
 
 	a.desired.Name = a.id.String() // Add name for update request
 
+	report := &structuredreporting.Diff{Object: updateOp.GetUnstructured()}
+
 	updateMask := &fieldmaskpb.FieldMask{}
 	if !reflect.DeepEqual(a.desired.DisplayName, a.actual.DisplayName) {
+		report.AddField("display_name", a.actual.DisplayName, a.desired.DisplayName)
 		updateMask.Paths = append(updateMask.Paths, "display_name")
 	}
 	if !reflect.DeepEqual(a.desired.Description, a.actual.Description) {
+		report.AddField("description", a.actual.Description, a.desired.Description)
 		updateMask.Paths = append(updateMask.Paths, "description")
 	}
 	if !reflect.DeepEqual(a.desired.Labels, a.actual.Labels) {
+		report.AddField("labels", a.actual.Labels, a.desired.Labels)
 		updateMask.Paths = append(updateMask.Paths, "labels")
 	}
 
@@ -187,6 +195,7 @@ func (a *entryGroupAdapter) Update(ctx context.Context, updateOp *directbase.Upd
 		// even though there is no update, we still want to update KRM status
 		updated = a.actual
 	} else {
+		structuredreporting.ReportDiff(ctx, report)
 		req := &pb.UpdateEntryGroupRequest{
 			UpdateMask: updateMask,
 			EntryGroup: a.desired,

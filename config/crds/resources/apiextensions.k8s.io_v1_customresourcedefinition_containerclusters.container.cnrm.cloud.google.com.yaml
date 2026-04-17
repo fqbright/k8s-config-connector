@@ -232,7 +232,7 @@ spec:
                     properties:
                       bootDiskKMSKeyRef:
                         description: |-
-                          Immutable. The Customer Managed Encryption Key used to encrypt the
+                          The Customer Managed Encryption Key used to encrypt the
                           boot disk attached to each node in the node pool.
                         oneOf:
                         - not:
@@ -408,6 +408,16 @@ spec:
                       when deciding to remove nodes from a cluster. Can be BALANCED
                       or OPTIMIZE_UTILIZATION. Defaults to BALANCED.
                     type: string
+                  defaultComputeClassConfig:
+                    description: Default compute class is a configuration for default
+                      compute class.
+                    properties:
+                      enabled:
+                        description: Enables default compute class.
+                        type: boolean
+                    required:
+                    - enabled
+                    type: object
                   enabled:
                     description: Whether node auto-provisioning is enabled. Resource
                       limits for cpu and memory must be defined to enable node auto-provisioning.
@@ -477,6 +487,10 @@ spec:
                         description: Controls whether user traffic is allowed over
                           this endpoint. Note that GCP-managed services may still
                           use the endpoint even if this is false.
+                        type: boolean
+                      enableK8sTokensViaDns:
+                        description: Controls whether the k8s token auth is allowed
+                          via DNS.
                         type: boolean
                     type: object
                   ipEndpointsConfig:
@@ -1084,6 +1098,10 @@ spec:
                     description: Immutable. Parameters for the ephemeral storage filesystem.
                       If unspecified, ephemeral storage is backed by the boot disk.
                     properties:
+                      dataCacheCount:
+                        description: Immutable. Number of local SSDs to be utilized
+                          for GKE Data Cache. Uses NVMe interfaces.
+                        type: integer
                       localSsdCount:
                         description: Immutable. Number of local SSDs to use to back
                           ephemeral storage. Uses NVMe interfaces. Each local SSD

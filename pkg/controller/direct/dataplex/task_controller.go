@@ -37,6 +37,7 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/directbase"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/registry"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/label"
+	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/structuredreporting"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -58,7 +59,9 @@ type taskModel struct {
 	config *config.ControllerConfig
 }
 
-func (m *taskModel) AdapterForObject(ctx context.Context, reader client.Reader, u *unstructured.Unstructured) (directbase.Adapter, error) {
+func (m *taskModel) AdapterForObject(ctx context.Context, op *directbase.AdapterForObjectOperation) (directbase.Adapter, error) {
+	u := op.GetUnstructured()
+	reader := op.Reader
 	obj := &krm.DataplexTask{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &obj); err != nil {
 		return nil, fmt.Errorf("error converting to %T: %w", obj, err)
@@ -175,6 +178,8 @@ func (a *taskAdapter) Update(ctx context.Context, updateOp *directbase.UpdateOpe
 	task := a.desired
 	task.Name = a.id.String()
 
+	report := &structuredreporting.Diff{Object: updateOp.GetUnstructured()}
+
 	// Set the required trigger type explicitly if unset, default to ON_DEMAND.
 	// This ensures comparison works correctly, even if the user didn't specify it.
 	if task.TriggerSpec == nil {
@@ -193,37 +198,47 @@ func (a *taskAdapter) Update(ctx context.Context, updateOp *directbase.UpdateOpe
 
 	updateMask := &fieldmaskpb.FieldMask{}
 	if !reflect.DeepEqual(task.Description, a.actual.Description) {
+		report.AddField("description", a.actual.Description, task.Description)
 		updateMask.Paths = append(updateMask.Paths, "description")
 	}
 	if !reflect.DeepEqual(task.DisplayName, a.actual.DisplayName) {
+		report.AddField("display_name", a.actual.DisplayName, task.DisplayName)
 		updateMask.Paths = append(updateMask.Paths, "display_name")
 	}
 	if !reflect.DeepEqual(task.Labels, a.actual.Labels) {
+		report.AddField("labels", a.actual.Labels, task.Labels)
 		updateMask.Paths = append(updateMask.Paths, "labels")
 	}
 	// TriggerSpec.Type is immutable, compare the rest of the spec
 	if !reflect.DeepEqual(task.TriggerSpec.StartTime, a.actual.TriggerSpec.StartTime) {
+		report.AddField("trigger_spec.start_time", a.actual.TriggerSpec.StartTime, task.TriggerSpec.StartTime)
 		updateMask.Paths = append(updateMask.Paths, "trigger_spec.start_time")
 	}
 	if !reflect.DeepEqual(task.TriggerSpec.Disabled, a.actual.TriggerSpec.Disabled) {
+		report.AddField("trigger_spec.disabled", a.actual.TriggerSpec.Disabled, task.TriggerSpec.Disabled)
 		updateMask.Paths = append(updateMask.Paths, "trigger_spec.disabled")
 	}
 	if !reflect.DeepEqual(task.TriggerSpec.MaxRetries, a.actual.TriggerSpec.MaxRetries) {
+		report.AddField("trigger_spec.max_retries", a.actual.TriggerSpec.MaxRetries, task.TriggerSpec.MaxRetries)
 		updateMask.Paths = append(updateMask.Paths, "trigger_spec.max_retries")
 	}
 	if !reflect.DeepEqual(task.TriggerSpec.GetSchedule(), a.actual.TriggerSpec.GetSchedule()) {
+		report.AddField("trigger_spec.schedule", a.actual.TriggerSpec.GetSchedule(), task.TriggerSpec.GetSchedule())
 		updateMask.Paths = append(updateMask.Paths, "trigger_spec.schedule")
 	}
 
 	if !cmp.Equal(task.ExecutionSpec, a.actual.ExecutionSpec, cmpopts.IgnoreUnexported(pb.Task_ExecutionSpec{})) {
+		report.AddField("execution_spec", a.actual.ExecutionSpec, task.ExecutionSpec)
 		updateMask.Paths = append(updateMask.Paths, "execution_spec")
 	}
 
 	// Compare task-specific config (spark or notebook)
 	if !cmp.Equal(task.GetSpark(), a.actual.GetSpark(), cmpopts.IgnoreUnexported(pb.Task_SparkTaskConfig{}, pb.Task_InfrastructureSpec{})) {
+		report.AddField("spark", a.actual.GetSpark(), task.GetSpark())
 		updateMask.Paths = append(updateMask.Paths, "spark")
 	}
 	if !cmp.Equal(task.GetNotebook(), a.actual.GetNotebook(), cmpopts.IgnoreUnexported(pb.Task_NotebookTaskConfig{}, pb.Task_InfrastructureSpec{})) {
+		report.AddField("notebook", a.actual.GetNotebook(), task.GetNotebook())
 		updateMask.Paths = append(updateMask.Paths, "notebook")
 	}
 
@@ -234,6 +249,7 @@ func (a *taskAdapter) Update(ctx context.Context, updateOp *directbase.UpdateOpe
 		// Even though there is no update, we still want to update KRM status
 		updated = a.actual
 	} else {
+		structuredreporting.ReportDiff(ctx, report)
 		log.V(2).Info("updating dataplex task fields", "name", a.id, "paths", updateMask.Paths)
 		req := &pb.UpdateTaskRequest{
 			UpdateMask: updateMask,

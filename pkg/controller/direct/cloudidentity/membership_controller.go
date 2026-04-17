@@ -24,13 +24,13 @@ import (
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/directbase"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/registry"
+	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/structuredreporting"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	api "google.golang.org/api/cloudidentity/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func init() {
@@ -47,7 +47,9 @@ type modelMembership struct {
 	config config.ControllerConfig
 }
 
-func (m *modelMembership) AdapterForObject(ctx context.Context, reader client.Reader, u *unstructured.Unstructured) (directbase.Adapter, error) {
+func (m *modelMembership) AdapterForObject(ctx context.Context, op *directbase.AdapterForObjectOperation) (directbase.Adapter, error) {
+	u := op.GetUnstructured()
+	reader := op.Reader
 	obj := &krm.CloudIdentityMembership{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &obj); err != nil {
 		return nil, fmt.Errorf("error converting to %T: %w", obj, err)
@@ -174,6 +176,9 @@ func (a *MembershipAdapter) Update(ctx context.Context, updateOp *directbase.Upd
 	sortRoles := func(x, y *api.MembershipRole) bool {
 		return x.Name < y.Name
 	}
+
+	report := &structuredreporting.Diff{Object: updateOp.GetUnstructured()}
+
 	if cmp.Equal(resource.Roles, a.actual.Roles, cmpopts.SortSlices(sortRoles)) {
 		log.V(2).Info("no field needs update", "name", a.id)
 		status := CloudIdentityMembershipStatus_FromAPI(mapCtx, a.actual)
@@ -182,6 +187,9 @@ func (a *MembershipAdapter) Update(ctx context.Context, updateOp *directbase.Upd
 		}
 		return updateOp.UpdateStatus(ctx, status, nil)
 	}
+
+	report.AddField("roles", a.actual.Roles, resource.Roles)
+	structuredreporting.ReportDiff(ctx, report)
 
 	var addRoles []*api.MembershipRole
 	var removeRoles []string

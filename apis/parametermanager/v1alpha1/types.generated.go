@@ -18,6 +18,7 @@
 // krm.version: v1alpha1
 // proto.service: google.cloud.parametermanager.v1
 // resource: ParameterManagerParameter:Parameter
+// resource: ParameterManagerParameterVersion:ParameterVersion
 
 package v1alpha1
 

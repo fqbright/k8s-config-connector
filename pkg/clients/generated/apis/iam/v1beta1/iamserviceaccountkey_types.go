@@ -32,15 +32,18 @@ package v1beta1
 
 import (
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/clients/generated/apis/k8s/v1alpha1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+var _ = apiextensionsv1.JSON{}
 
 type IAMServiceAccountKeySpec struct {
 	/* Immutable. The algorithm used to generate the key, used only on create. KEY_ALG_RSA_2048 is the default algorithm. Valid values are: "KEY_ALG_RSA_1024", "KEY_ALG_RSA_2048". */
 	// +optional
 	KeyAlgorithm *string `json:"keyAlgorithm,omitempty"`
 
-	/* Immutable. */
+	/* Immutable. The output format of the private key. TYPE_GOOGLE_CREDENTIALS_FILE is the default output format. */
 	// +optional
 	PrivateKeyType *string `json:"privateKeyType,omitempty"`
 
@@ -48,10 +51,11 @@ type IAMServiceAccountKeySpec struct {
 	// +optional
 	PublicKeyData *string `json:"publicKeyData,omitempty"`
 
-	/* Immutable. */
+	/* Immutable. The output format for the public key. TYPE_NONE is the default for public key output. */
 	// +optional
 	PublicKeyType *string `json:"publicKeyType,omitempty"`
 
+	/* Immutable. The Service Account to create a key for. */
 	ServiceAccountRef v1alpha1.ResourceRef `json:"serviceAccountRef"`
 }
 

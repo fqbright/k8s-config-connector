@@ -35,13 +35,13 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	krm "github.com/GoogleCloudPlatform/k8s-config-connector/apis/servicenetworking/v1alpha1"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/config"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/directbase"
 	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/controller/direct/registry"
+	"github.com/GoogleCloudPlatform/k8s-config-connector/pkg/structuredreporting"
 )
 
 func init() {
@@ -74,7 +74,9 @@ func (m *peeredDnsDomainModel) client(ctx context.Context) (*gcp.APIService, err
 	return gcpClient, err
 }
 
-func (m *peeredDnsDomainModel) AdapterForObject(ctx context.Context, kube client.Reader, u *unstructured.Unstructured) (directbase.Adapter, error) {
+func (m *peeredDnsDomainModel) AdapterForObject(ctx context.Context, op *directbase.AdapterForObjectOperation) (directbase.Adapter, error) {
+	u := op.GetUnstructured()
+	kube := op.Reader
 	obj := &krm.ServiceNetworkingPeeredDNSDomain{}
 	if err := runtime.DefaultUnstructuredConverter.FromUnstructured(u.Object, &obj); err != nil {
 		return nil, fmt.Errorf("error converting to %T: %w", obj, err)
@@ -210,8 +212,11 @@ func (a *peeredDNSDomainAdapter) Update(ctx context.Context, updateOp *directbas
 	desired := ReflectClone(a.desired)
 	desired.Name = a.id.Name
 
+	report := &structuredreporting.Diff{Object: updateOp.GetUnstructured()}
+
 	updateMask := &fieldmaskpb.FieldMask{}
 	if !reflect.DeepEqual(desired.DnsSuffix, a.actual.DnsSuffix) {
+		report.AddField("dns_suffix", a.actual.DnsSuffix, desired.DnsSuffix)
 		updateMask.Paths = append(updateMask.Paths, "dns_suffix")
 	}
 
@@ -219,6 +224,8 @@ func (a *peeredDNSDomainAdapter) Update(ctx context.Context, updateOp *directbas
 		log.V(2).Info("no field needs update", "name", a.id)
 		return nil
 	}
+
+	structuredreporting.ReportDiff(ctx, report)
 
 	return fmt.Errorf("cannot update peeredDnsDomain object (values are immutable)")
 	// op, err := a.gcpClient.Services.Projects.Global.Networks.PeeredDnsDomains.Create(parent, desired).Context(ctx).Do()

@@ -71,5 +71,17 @@ var (
 		Kind:    reflect.TypeOf(NetworkServicesEdgeCacheService{}).Name(),
 	}
 
+	NetworkServicesLBRouteExtensionGVK = schema.GroupVersionKind{
+		Group:   SchemeGroupVersion.Group,
+		Version: SchemeGroupVersion.Version,
+		Kind:    reflect.TypeOf(NetworkServicesLBRouteExtension{}).Name(),
+	}
+
+	NetworkServicesServiceBindingGVK = schema.GroupVersionKind{
+		Group:   SchemeGroupVersion.Group,
+		Version: SchemeGroupVersion.Version,
+		Kind:    reflect.TypeOf(NetworkServicesServiceBinding{}).Name(),
+	}
+
 	networkservicesAPIVersion = SchemeGroupVersion.String()
 )
